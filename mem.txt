@@ -1,0 +1,7 @@
+b=msgpack.packb(f,default=m.encode)
+from ctypes import *
+libc = CDLL("libc.so.6")
+file_p  = libc.fopen("output1.bin", "wb")
+nitems  = libc.fwrite(b,1,len(b),file_p)
+libc.fclose(file_p)
+

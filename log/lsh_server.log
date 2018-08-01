@@ -1,0 +1,134 @@
+2018-07-04 11:44:45,759 INFO root -lsh_server start!!!
+2018-07-04 11:44:45,759 INFO root -feature file:50w.npy,label file:labels_50w.npy,port:5556,thread num:10
+2018-07-04 11:44:45,759 INFO root -start load data
+2018-07-04 11:44:46,060 INFO root -load cost time:1 seconds
+2018-07-04 11:44:46,378 INFO root -building the index based on the cross-polytope LSH
+2018-07-04 11:44:56,698 INFO root -construction time: 10.3207
+2018-07-04 11:44:56,741 INFO root -work thread num:10
+2018-07-04 11:44:56,742 INFO root -worker {0} start
+2018-07-04 11:44:56,742 INFO root -worker {1} start
+2018-07-04 11:44:56,742 INFO root -start threads consume 0 seconds
+2018-07-04 11:44:56,742 INFO root -worker {2} start
+2018-07-04 11:44:56,742 INFO root -worker {3} start
+2018-07-04 11:44:56,742 INFO root -worker {4} start
+2018-07-04 11:44:56,742 INFO root -worker {5} start
+2018-07-04 11:44:56,742 INFO root -worker {6} start
+2018-07-04 11:44:56,742 INFO root -worker {7} start
+2018-07-04 11:44:56,742 INFO root -worker {8} start
+2018-07-04 11:44:56,742 INFO root -worker {9} start
+2018-07-04 11:45:01,742 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 11:45:01,743 INFO root -lsh average_total_query_time: 0,num_queries: 0
+2018-07-04 11:45:06,743 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 11:45:06,743 INFO root -lsh average_total_query_time: 0,num_queries: 0
+2018-07-04 11:45:11,743 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 11:45:11,743 INFO root -lsh average_total_query_time: 0,num_queries: 0
+2018-07-04 11:45:16,743 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 11:45:16,744 INFO root -lsh average_total_query_time: 0,num_queries: 0
+2018-07-04 11:45:21,744 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 11:45:21,744 INFO root -lsh average_total_query_time: 0,num_queries: 0
+2018-07-04 11:45:26,744 INFO root -lsh_server worker thread num:10 Concurrency:1335
+2018-07-04 11:45:26,744 INFO root -lsh average_total_query_time: 0.000207249,num_queries: 6677
+2018-07-04 11:45:31,745 INFO root -lsh_server worker thread num:10 Concurrency:2082
+2018-07-04 11:45:31,745 INFO root -lsh average_total_query_time: 0.000209294,num_queries: 17090
+2018-07-04 11:45:36,745 INFO root -lsh_server worker thread num:10 Concurrency:2108
+2018-07-04 11:45:36,745 INFO root -lsh average_total_query_time: 0.000209092,num_queries: 27632
+2018-07-04 11:45:41,745 INFO root -lsh_server worker thread num:10 Concurrency:2108
+2018-07-04 11:45:41,745 INFO root -lsh average_total_query_time: 0.00020875,num_queries: 38176
+2018-07-04 11:45:46,745 INFO root -lsh_server worker thread num:10 Concurrency:2108
+2018-07-04 11:45:46,746 INFO root -lsh average_total_query_time: 0.000208769,num_queries: 48718
+2018-07-04 11:45:51,746 INFO root -lsh_server worker thread num:10 Concurrency:2090
+2018-07-04 11:45:51,746 INFO root -lsh average_total_query_time: 0.000208665,num_queries: 59171
+2018-07-04 11:45:56,746 INFO root -lsh_server worker thread num:10 Concurrency:2113
+2018-07-04 11:45:56,746 INFO root -lsh average_total_query_time: 0.000208354,num_queries: 69737
+2018-07-04 11:46:01,746 INFO root -lsh_server worker thread num:10 Concurrency:2028
+2018-07-04 11:46:01,746 INFO root -lsh average_total_query_time: 0.000208808,num_queries: 79877
+2018-07-04 11:46:06,746 INFO root -lsh_server worker thread num:10 Concurrency:2024
+2018-07-04 11:46:06,746 INFO root -lsh average_total_query_time: 0.000208546,num_queries: 90000
+2018-07-04 11:46:11,747 INFO root -lsh_server worker thread num:10 Concurrency:2000
+2018-07-04 11:46:11,747 INFO root -lsh average_total_query_time: 0.000208479,num_queries: 100000
+2018-07-04 11:46:16,747 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 11:46:16,747 INFO root -lsh average_total_query_time: 0.000208479,num_queries: 100000
+2018-07-04 11:46:21,748 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 11:46:21,748 INFO root -lsh average_total_query_time: 0.000208479,num_queries: 100000
+2018-07-04 11:46:26,748 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 11:46:26,748 INFO root -lsh average_total_query_time: 0.000208479,num_queries: 100000
+2018-07-04 11:46:31,749 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 11:46:31,749 INFO root -lsh average_total_query_time: 0.000208479,num_queries: 100000
+2018-07-04 11:46:36,749 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 11:46:36,749 INFO root -lsh average_total_query_time: 0.000208479,num_queries: 100000
+2018-07-04 11:46:41,750 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 11:46:41,750 INFO root -lsh average_total_query_time: 0.000208479,num_queries: 100000
+2018-07-04 11:46:46,750 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 11:46:46,750 INFO root -lsh average_total_query_time: 0.000208479,num_queries: 100000
+2018-07-04 11:46:51,751 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 11:46:51,751 INFO root -lsh average_total_query_time: 0.000208479,num_queries: 100000
+2018-07-04 11:46:56,751 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 11:46:56,752 INFO root -lsh average_total_query_time: 0.000208479,num_queries: 100000
+2018-07-04 11:47:01,752 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 11:47:01,752 INFO root -lsh average_total_query_time: 0.000208479,num_queries: 100000
+2018-07-04 11:47:06,753 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 11:47:06,753 INFO root -lsh average_total_query_time: 0.000208479,num_queries: 100000
+2018-07-04 11:47:11,753 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 11:47:11,753 INFO root -lsh average_total_query_time: 0.000208479,num_queries: 100000
+2018-07-04 14:25:39,067 INFO root -lsh_server start!!!
+2018-07-04 14:25:39,067 INFO root -feature file:50w.npy,label file:labels_50w.npy,port:5556,thread num:10
+2018-07-04 14:25:39,067 INFO root -start load data
+2018-07-04 14:25:39,360 INFO root -load cost time:0 seconds
+2018-07-04 14:25:39,631 INFO root -building the index based on the cross-polytope LSH
+2018-07-04 14:25:49,884 INFO root -construction time: 10.2531
+2018-07-04 14:25:49,906 INFO root -work thread num:10
+2018-07-04 14:25:49,906 INFO root -worker {0} start
+2018-07-04 14:25:49,906 INFO root -worker {1} start
+2018-07-04 14:25:49,906 INFO root -start threads consume 0 seconds
+2018-07-04 14:25:49,906 INFO root -worker {2} start
+2018-07-04 14:25:49,906 INFO root -worker {4} start
+2018-07-04 14:25:49,906 INFO root -worker {3} start
+2018-07-04 14:25:49,906 INFO root -worker {6} start
+2018-07-04 14:25:49,906 INFO root -worker {9} start
+2018-07-04 14:25:49,906 INFO root -worker {7} start
+2018-07-04 14:25:49,906 INFO root -worker {8} start
+2018-07-04 14:25:49,906 INFO root -worker {5} start
+2018-07-04 14:25:54,906 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 14:25:54,906 INFO root -lsh average_total_query_time: 0,num_queries: 0
+2018-07-04 14:25:59,907 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 14:25:59,907 INFO root -lsh average_total_query_time: 0,num_queries: 0
+2018-07-04 14:26:04,907 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 14:26:04,908 INFO root -lsh average_total_query_time: 0,num_queries: 0
+2018-07-04 14:26:09,908 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 14:26:09,908 INFO root -lsh average_total_query_time: 0,num_queries: 0
+2018-07-04 14:26:14,909 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 14:26:14,909 INFO root -lsh average_total_query_time: 0,num_queries: 0
+2018-07-04 14:26:19,909 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 14:26:19,909 INFO root -lsh average_total_query_time: 0,num_queries: 0
+2018-07-04 14:26:24,909 INFO root -lsh_server worker thread num:10 Concurrency:1376
+2018-07-04 14:26:24,910 INFO root -lsh average_total_query_time: 0.000207318,num_queries: 6885
+2018-07-04 14:26:29,910 INFO root -lsh_server worker thread num:10 Concurrency:2098
+2018-07-04 14:26:29,910 INFO root -lsh average_total_query_time: 0.000209126,num_queries: 17376
+2018-07-04 14:26:34,910 INFO root -lsh_server worker thread num:10 Concurrency:2078
+2018-07-04 14:26:34,910 INFO root -lsh average_total_query_time: 0.000209926,num_queries: 27769
+2018-07-04 14:26:39,911 INFO root -lsh_server worker thread num:10 Concurrency:2083
+2018-07-04 14:26:39,911 INFO root -lsh average_total_query_time: 0.000209843,num_queries: 38186
+2018-07-04 14:26:44,911 INFO root -lsh_server worker thread num:10 Concurrency:2105
+2018-07-04 14:26:44,911 INFO root -lsh average_total_query_time: 0.000209815,num_queries: 48714
+2018-07-04 14:26:49,911 INFO root -lsh_server worker thread num:10 Concurrency:2057
+2018-07-04 14:26:49,911 INFO root -lsh average_total_query_time: 0.000210053,num_queries: 59003
+2018-07-04 14:26:54,911 INFO root -lsh_server worker thread num:10 Concurrency:2104
+2018-07-04 14:26:54,911 INFO root -lsh average_total_query_time: 0.000210032,num_queries: 69523
+2018-07-04 14:26:59,911 INFO root -lsh_server worker thread num:10 Concurrency:2018
+2018-07-04 14:26:59,912 INFO root -lsh average_total_query_time: 0.000210614,num_queries: 79617
+2018-07-04 14:27:04,912 INFO root -lsh_server worker thread num:10 Concurrency:2076
+2018-07-04 14:27:04,912 INFO root -lsh average_total_query_time: 0.00021054,num_queries: 90000
+2018-07-04 14:27:09,912 INFO root -lsh_server worker thread num:10 Concurrency:2000
+2018-07-04 14:27:09,912 INFO root -lsh average_total_query_time: 0.000210525,num_queries: 100000
+2018-07-04 14:27:14,913 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 14:27:14,913 INFO root -lsh average_total_query_time: 0.000210525,num_queries: 100000
+2018-07-04 14:27:19,913 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 14:27:19,913 INFO root -lsh average_total_query_time: 0.000210525,num_queries: 100000
+2018-07-04 14:27:24,913 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 14:27:24,914 INFO root -lsh average_total_query_time: 0.000210525,num_queries: 100000
+2018-07-04 14:27:29,914 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 14:27:29,914 INFO root -lsh average_total_query_time: 0.000210525,num_queries: 100000
+2018-07-04 14:27:34,914 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 14:27:34,915 INFO root -lsh average_total_query_time: 0.000210525,num_queries: 100000
+2018-07-04 14:27:39,915 INFO root -lsh_server worker thread num:10 Concurrency:0
+2018-07-04 14:27:39,915 INFO root -lsh average_total_query_time: 0.000210525,num_queries: 100000
