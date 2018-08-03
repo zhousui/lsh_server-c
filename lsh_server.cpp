@@ -91,7 +91,16 @@ const int NUM_ROTATIONS = 1;
 const int SLEEP_SECONDS = 5;
 
 //LoggerPtr rootLogger; 
-
+std::map<int,std::string> error_map = {
+    {-1,"dimension mismatch"},
+    {-2,"Fatal Error:len of all array must be same"},
+    {-3,"Fatal Error:emb_array must be a two-dimensional array"},
+    {-4,""},
+    {-5,"Fatal Error:Invalid command"},
+    {-6,"Fatal Error:Protocol error,can not decode"},
+    {-7,"Fatal Error:Only support float or double type"},
+    {-1000,"Fatal Error:Unkown Error"}
+};
  
 class lsh_server
 {
@@ -380,15 +389,15 @@ void lsh_server::worker(int name, string url_worker,void *ctx)
                     }
                     else{
                         error_code = -7;
-                        LOG4CXX_ERROR(logger,"Fatal Error:Only support float or double type");
-                        names.push_back("Fatal Error:Only support float or double type");
+                        LOG4CXX_ERROR(logger,error_map[error_code]);
+                        names.push_back(error_map[error_code]);
                         confidences.push_back(0.0);
                         break;
                     }
                     if (qf.shape.size() != 2){
                         error_code = -3;
-                        LOG4CXX_ERROR(logger,"Fatal Error:emb_array must be a two-dimensional array");
-                        names.push_back("Fatal Error:emb_array must be a two-dimensional array");
+                        LOG4CXX_ERROR(logger,error_map[error_code]);
+                        names.push_back(error_map[error_code]);
                         confidences.push_back(0.0);
                         break;
                     }
@@ -401,8 +410,8 @@ void lsh_server::worker(int name, string url_worker,void *ctx)
                     construct_point_vec(qf.data.ptr,qf.shape[0],qf.shape[1],&queries);
                     if (queries.size() != h_angle.size() || queries.size() != v_angle.size()){
                         error_code = -2;
-                        LOG4CXX_ERROR(logger,"Fatal Error:len of all array must be same");
-                        names.push_back("Fatal Error:len of all array must be same");
+                        LOG4CXX_ERROR(logger,error_map[error_code]);
+                        names.push_back(error_map[error_code]);
                         confidences.push_back(0.0);
                         break;
                     }
@@ -420,8 +429,8 @@ void lsh_server::worker(int name, string url_worker,void *ctx)
                                 }
                                 else {
                                     error_code = -1000;
-                                    LOG4CXX_ERROR(logger,"Fatal Error:Unkown Error");
-                                    names.push_back("Fatal Error:Unkown Error");
+                                    LOG4CXX_ERROR(logger,error_map[error_code]);
+                                    names.push_back(error_map[error_code]);
                                     confidences.push_back(0.0);
                                 }
                             }
@@ -440,8 +449,8 @@ void lsh_server::worker(int name, string url_worker,void *ctx)
                                 }
                                 else {
                                     error_code = -1000;
-                                    LOG4CXX_ERROR(logger,"Fatal Error:Unkown Error");
-                                    names.push_back("Fatal Error:Unkown Error");
+                                    LOG4CXX_ERROR(logger,error_map[error_code]);
+                                    names.push_back(error_map[error_code]);
                                     confidences.push_back(0.0);
                                 }
                             }else{
@@ -466,15 +475,15 @@ void lsh_server::worker(int name, string url_worker,void *ctx)
             }
             else{
                 error_code = -5;
-                LOG4CXX_ERROR(logger,"Fatal Error:Invalid command");
-                names.push_back("Fatal Error:Invalid command");
+                LOG4CXX_ERROR(logger,error_map[error_code]);
+                names.push_back(error_map[error_code]);
                 confidences.push_back(0.0);
             }
         }
         else {
             error_code = -6;
-            names.push_back("Fatal Error:Protocol error,can not decode");
-                LOG4CXX_ERROR(logger,"Fatal Error:Protocol error,can not decode");
+            LOG4CXX_ERROR(logger,error_map[error_code]);
+            names.push_back(error_map[error_code]);
             confidences.push_back(0.0);
         }
         
