@@ -11,7 +11,7 @@ typedef DenseVector<float> FloatPoint;
 typedef DenseVector<double> DoublePoint;
 //template <class T>
 //typedef DenseVector<T> Point;
-typedef DenseVector<double> Point;
+//typedef DenseVector<double> Point;
 
 struct QueryFeature {
     std::string type;

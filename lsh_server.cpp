@@ -1,3 +1,9 @@
+/*
+后续有待改进：
+１．增加命令行参数，自动切换日志级别
+２．修改-s参数功能，决定是否不管npy格式为float64或float32，都转为float32
+3.检查npparray是否释放内存
+*/
 #include <assert.h>
 #include <iostream>
 #include <zmq.h>
@@ -26,7 +32,6 @@
 #include <stdlib.h>
 #include "math.h"
 
-//#include "./msgpack.h"
 #include <log4cxx/logmanager.h>
 #include <log4cxx/xml/domconfigurator.h>
 #include <log4cxx/patternlayout.h>
@@ -42,7 +47,6 @@
 #include <log4cxx/helpers/exception.h>
 #include <log4cxx/helpers/fileoutputstream.h>
 
-//using namespace lshserver;
 using namespace std;
 using namespace cnpy;
 using namespace log4cxx;
@@ -90,7 +94,9 @@ const int NUM_HASH_BITS = 18;
 const int NUM_ROTATIONS = 1;
 const int SLEEP_SECONDS = 5;
 
-//LoggerPtr rootLogger; 
+const unsigned int TOP1_CMD = 0x8001;
+const unsigned int TOPN_CMD = 0x8002;
+
 std::map<int,std::string> error_map = {
     {-1,"dimension mismatch"},
     {-2,"Fatal Error:len of all array must be same"},
@@ -101,7 +107,7 @@ std::map<int,std::string> error_map = {
     {-7,"Fatal Error:Only support float or double type"},
     {-1000,"Fatal Error:Unkown Error"}
 };
- 
+#if 1
 class lsh_server
 {
 private:
@@ -116,75 +122,159 @@ private:
     void *workers;
 
     unsigned long *worker_counts;
+    vector<string> label;    
 
-    vector<Point> dataset;
-    vector<string> label;
-    unique_ptr<LSHNearestNeighborQueryPool<Point>> qo;
-    //unique_ptr<LSHNearestNeighborQuery<Point>> qo;
-    unique_ptr<LSHNearestNeighborTable<Point>> table;
+    bool is_simple;
+    bool init_finished;
     LoggerPtr logger;
 
+    void* dataset;
+    void *qo;
+    void *table;
+    template <class T> 
+    vector<DenseVector<T>> *get_dataset(){
+        return (vector<DenseVector<T>> *)dataset;
+    }
+    template <class T> 
+    LSHNearestNeighborQueryPool<DenseVector<T>> *get_qo(){
+        return (LSHNearestNeighborQueryPool<DenseVector<T>> *)qo;//.get();
+    }
+    template <class T>
+    void init_hash(NpyArray  &cnpy_feature){
+        DenseVector<T> p;
+        T* loaded_data = cnpy_feature.data<T>();
+        vector<DenseVector<T>> *pdata = new vector<DenseVector<T>>;
+        for(int i=0;i<cnpy_feature.shape[0];i++){
+            p.resize(cnpy_feature.shape[1]);
+            for(int j=0;j<cnpy_feature.shape[1];j++){
+                p[j] = loaded_data[i*cnpy_feature.shape[1]+j];
+            }
+            pdata->push_back(p);
+        }
+        dataset = (void*)pdata;
+        // setting parameters and constructing the table
+        LSHConstructionParameters params;
+        params.dimension = (*pdata)[0].size();
+        params.lsh_family = LSHFamily::CrossPolytope;
+        params.l = NUM_HASH_TABLES;
+        params.distance_function = DistanceFunction::EuclideanSquared;
+        compute_number_of_hash_functions<DenseVector<T>>(NUM_HASH_BITS, &params);
+        params.num_rotations = NUM_ROTATIONS;
+        // we want to use all the available threads to set up
+        params.num_setup_threads = 0;
+        params.storage_hash_table = StorageHashTable::BitPackedFlatHashTable;
+
+        unique_ptr<LSHNearestNeighborTable<DenseVector<T>>> p_table = construct_table<DenseVector<T>>(*pdata, params);
+        unique_ptr<LSHNearestNeighborQueryPool<DenseVector<T>>> p_qo = p_table->construct_query_pool(params.l);
+
+        p_qo->reset_query_statistics();
+        qo = (void*)p_qo.release();
+        table = (void*)p_table.release();
+    }
+
 public:
-    lsh_server(string feature_file,string label_file,string port,unsigned int num=10);
+    lsh_server(string feature_file,string label_file,string port,unsigned int num=10,bool b_simple=false);
     ~lsh_server();
     void loop();
     void worker(int name, string url_worker,void *ctx);
     void stater();
 };
 
-void construct_point_vector(vector<vector<double>> &vec,vector<Point> *queries){
-    Point p;
-    vector<double>::iterator it;
-    vector<vector<double>>::iterator iter;
-    vector<double> vec_tmp;
-
-    for(iter = vec.begin(); iter != vec.end(); iter++){   
-        int j=0; 
-        vec_tmp = *iter;
-        p.resize(vec_tmp.size());
-        for(it = vec_tmp.begin(); it != vec_tmp.end(); it++){
-            p[j]=*it;
-            j++;
-        }
-        queries->push_back(p);    
-    }
-}
-//template <class T>
-void construct_point_vec(const char* buf,unsigned int shape1, unsigned int shape2, vector<Point> *queries){
-    Point p;
-    //DenseVector<T> p;
-    //T *datap=(T*)buf;
-    double *datap=(double*)buf;
+#endif
+template <class T>
+void construct_point_vec(const char* buf,unsigned int shape1, unsigned int shape2, vector<DenseVector<T>> *queries){
+    DenseVector<T> p;
+    T *datap=(T*)buf;
     for (int i=0;i<shape1;i++){  
         p.resize(shape2);
-        //cout << i << endl;
         for(int j=0;j<shape2;j++){
             p[j]=/*htond*/(datap[j]);
-            //cout << datap[j] << ",";
-        //if (j % 4 == 0)
-         //cout << endl;
         }
         queries->push_back(p);
         datap+=shape2;
     }
 }
-
-double get_eudistance(Point p1,Point p2){
+template <class T>
+T get_eudistance(DenseVector<T> p1,DenseVector<T> p2){
     return sqrt((p1-p2).squaredNorm());
 }
-
-double get_cosdistance(Point p1,Point p2){
+template <class T>
+T get_cosdistance(DenseVector<T> p1,DenseVector<T> p2){
     return p1.dot(p2)/(sqrt(p1.squaredNorm())*sqrt(p2.squaredNorm()));
 }
-
-double get_simi(Point p1,Point p2){
+template <class T>
+T get_simi(DenseVector<T> p1,DenseVector<T> p2){
     if (get_eudistance(p1,p2)<1.0)
         return get_cosdistance(p1,p2);
     else
         return 0.0;
 }
+typedef std::tuple<int,vector<string>,vector<double>> ReturnTurple;
+template <class T>
+ReturnTurple find_neighbor(const char* buf,unsigned int shape1, unsigned int shape2,vector<float> &h_angle,vector<float> &v_angle,vector<DenseVector<T>> &dataset,vector<string> &label,unsigned int find_k,LSHNearestNeighborQueryPool<DenseVector<T>> *qo,unsigned int search_cmd,std::map<int,std::string> &error_map){    
+    int error_code = 0;
+    vector<string> names;
+    vector<double> confidences;
+    vector<DenseVector<T>> queries;
+    LoggerPtr logger = Logger::getRootLogger();
 
-lsh_server::lsh_server(string feature_file,string label_file,string port,unsigned int num)
+    construct_point_vec(buf,shape1,shape2,&queries);
+    if (queries.size() != h_angle.size() || queries.size() != v_angle.size()){
+        error_code = -2;
+        LOG4CXX_ERROR(logger,error_map[error_code]);
+        names.push_back(error_map[error_code]);
+        confidences.push_back(0.0);
+        return std::make_tuple(error_code,names,confidences);
+    }
+    for(const auto &query : queries){
+        if (search_cmd == TOP1_CMD){
+            auto t1 = high_resolution_clock::now();
+            int result = qo->find_nearest_neighbor(query);
+            auto t2 = high_resolution_clock::now();
+            double elapsed_time = duration_cast<duration<double>>(t2 - t1).count();
+            LOG4CXX_DEBUG(logger,"query time: " << elapsed_time);
+            if (result != -1){
+                names.push_back(label[result]) ;
+                confidences.push_back(get_simi(query,dataset[result]));
+            }
+            else {
+                error_code = -1000;
+                LOG4CXX_ERROR(logger,error_map[error_code]);
+                names.push_back(error_map[error_code]);
+                confidences.push_back(0.0);
+                break;
+            }
+        }
+        else if (search_cmd == TOPN_CMD){
+            auto t1 = high_resolution_clock::now();
+            std::vector<int32_t> result;
+            qo->find_k_nearest_neighbors(query,find_k,&result);
+            auto t2 = high_resolution_clock::now();
+            double elapsed_time = duration_cast<duration<double>>(t2 - t1).count();
+            LOG4CXX_DEBUG(logger,"query time: " << elapsed_time);
+            if (result.size() == find_k){
+                for(std::vector<int32_t>::iterator itr=result.begin();itr!=result.end();itr++){
+                    names.push_back(label[*itr]) ;
+                    confidences.push_back(get_simi(query,dataset[*itr]));
+                }
+            }
+            else {
+                error_code = -1000;
+                LOG4CXX_ERROR(logger,error_map[error_code]);
+                names.push_back(error_map[error_code]);
+                confidences.push_back(0.0);
+                break;
+            }
+        }else{
+
+        }
+    }
+    return std::make_tuple(error_code,names,confidences);
+}
+
+
+#if 1
+lsh_server::lsh_server(string feature_file,string label_file,string port,unsigned int num,bool b_simple)
 {
     url_workers = "inproc://ping-workers";
     url_router = string("tcp://*:")+port ;
@@ -222,58 +312,33 @@ lsh_server::lsh_server(string feature_file,string label_file,string port,unsigne
     time(&end);
     LOG4CXX_INFO(logger, "load cost time:" << difftime(end, start) << " seconds");
 
-    Point p;
-    double* loaded_data = cnpy_feature.data<double>();
-    for(int i=0;i<cnpy_feature.shape[0];i++){
-        p.resize(cnpy_feature.shape[1]);
-        for(int j=0;j<cnpy_feature.shape[1];j++){
-            p[j] = loaded_data[i*cnpy_feature.shape[1]+j];
-        }
-        dataset.push_back(p);
-    }
     char *loaded_label = cnpy_label.data<char>();
-    //vector<string> label;
     char l[cnpy_label.word_size+1];
     for(int i=0;i<cnpy_label.shape[0];i++){
         memcpy(l,loaded_label+i*cnpy_label.word_size,cnpy_label.word_size);
         l[cnpy_label.word_size]='\0';
         label.push_back(l);        
     }
-    dimension = dataset[0].size();
 
-    // setting parameters and constructing the table
-    LSHConstructionParameters params;
-    params.dimension = dataset[0].size();
-    params.lsh_family = LSHFamily::CrossPolytope;
-    params.l = NUM_HASH_TABLES;
-    params.distance_function = DistanceFunction::EuclideanSquared;
-    compute_number_of_hash_functions<Point>(NUM_HASH_BITS, &params);
-    params.num_rotations = NUM_ROTATIONS;
-    // we want to use all the available threads to set up
-    params.num_setup_threads = 0;
-    params.storage_hash_table = StorageHashTable::BitPackedFlatHashTable;
-
-    // LSHConstructionParameters params
-    //     = get_default_parameters<Point>(dataset.size(),
-    //                                dataset[0].size(),
-    //                                DistanceFunction::EuclideanSquared,
-    //                                true);
+    dimension = cnpy_feature.shape[1];
     LOG4CXX_INFO(logger, "building the index based on the cross-polytope LSH");
     auto t1 = high_resolution_clock::now();
-    table = construct_table<Point>(dataset, params);
+    is_simple = b_simple;
+    if (b_simple){
+        init_hash<float>(cnpy_feature);
+    }
+    else{
+        init_hash<double>(cnpy_feature);
+    }
     auto t2 = high_resolution_clock::now();
     double elapsed_time = duration_cast<duration<double>>(t2 - t1).count();
-    //cout << "done" << endl;
     LOG4CXX_INFO(logger,"construction time: " << elapsed_time);
-
-    qo = table->construct_query_pool(params.l);
-    // qo = table->construct_query_object(params.l);
-    qo->reset_query_statistics();
 }
 
 lsh_server::~lsh_server()
 {
     delete [] worker_counts;
+    delete dataset;
 }
 
 void lsh_server::loop()
@@ -312,15 +377,17 @@ void lsh_server::stater(){
     while (1){
         sleep(SLEEP_SECONDS);
         cur=0;
-        // printf("\n[");
         for(int i=0;i<worker_num;i++){
             cur+=worker_counts[i];
-            // printf("%ld ",worker_counts[i]);
         }
-        // printf("]\n");
         LOG4CXX_INFO(logger,"lsh_server worker thread num:"<<worker_num <<" Concurrency:"<<((cur-last)/SLEEP_SECONDS));
         last=cur;
-        QueryStatistics qs = qo->get_query_statistics();
+        QueryStatistics qs;
+        if (is_simple){
+            qs = get_qo<float>()->get_query_statistics();
+        }else{
+            qs = get_qo<double>()->get_query_statistics();
+        }
         LOG4CXX_INFO(logger,"lsh average_total_query_time: "<<qs.average_total_query_time<<",num_queries: "<<qs.num_queries);
     }
 }
@@ -328,14 +395,14 @@ void lsh_server::stater(){
 void lsh_server::worker(int name, string url_worker,void *ctx)
 {
     LOG4CXX_INFO(logger,"worker {" << name << "} start");
-    //lshserver::msgpack mp;
     void *worker = zmq_socket(ctx,ZMQ_REP);
     zmq_connect(worker, url_worker.c_str());
     while(1){
         int error_code = 0;
-        //string error_msg;
-        vector<Point> queries; 
-        //SearchArg arg;
+        std::tuple<int,vector<string>,vector<double>> error_return;
+        vector<string> names;
+        vector<double> confidences;
+
         /* Create an empty ØMQ message */
         zmq_msg_t msg;
         int rc = zmq_msg_init (&msg);
@@ -343,33 +410,48 @@ void lsh_server::worker(int name, string url_worker,void *ctx)
         /* Block until a message is available to be received from socket */
         rc = zmq_msg_recv (&msg, worker, 0);
         //assert (rc != -1); 
-        if (rc == -1){
-            zmq_msg_close (&msg);
-            LOG4CXX_FATAL(logger, "zmq_msg_recv return -1");
-            continue;
-        }
-        auto t1 = high_resolution_clock::now();
-        msgpack::object_handle oh = msgpack::unpack((const char*)zmq_msg_data(&msg), zmq_msg_size(&msg)); 
-        auto t2 = high_resolution_clock::now();
-        double elapsed_time = duration_cast<duration<double>>(t2 - t1).count();
-        LOG4CXX_DEBUG(logger,"unpack msg time: " << elapsed_time);
-        /* Release message */ zmq_msg_close (&msg);
-        unsigned int search_cmd=0,find_k = 0;
-        vector<string> names;
-        vector<double> confidences;
-        vector<float> h_angle;
-        vector<float> v_angle;
-        QueryFeature qf;
-        msgpack::object  obj = oh.get();
-        unsigned int moa_size = obj.via.array.size;
-        if(obj.type == msgpack::type::ARRAY && moa_size>0){
-            // for(msgpack::object* itr=msgpack::begin(obj.via.array);itr!=msgpack::end(obj.via.array);itr++){
-            //     cout << *itr << endl;
-            // }
-            msgpack::object *itr = msgpack::begin(obj.via.array);
-            search_cmd = itr->via.i64;
-            if (search_cmd == 0x8001 || search_cmd == 0x8002){
-                if (search_cmd == 0x8002){
+        do {
+            if (rc == -1){
+                zmq_msg_close (&msg);
+                error_code = -1000;
+                LOG4CXX_FATAL(logger, "Fatal Error:zmq_msg_recv return -1");
+                names.push_back("Fatal Error:zmq_msg_recv return -1");
+                confidences.push_back(0.0);
+                error_return = std::make_tuple(error_code,names,confidences);
+                break;
+            }
+            try{
+                auto t1 = high_resolution_clock::now();
+                msgpack::object_handle oh = msgpack::unpack((const char*)zmq_msg_data(&msg), zmq_msg_size(&msg)); 
+                auto t2 = high_resolution_clock::now();
+                double elapsed_time = duration_cast<duration<double>>(t2 - t1).count();
+                LOG4CXX_DEBUG(logger,"unpack msg time: " << elapsed_time);
+                /* Release message */ zmq_msg_close (&msg);
+                unsigned int search_cmd=0,find_k = 0;
+                vector<float> h_angle;
+                vector<float> v_angle;
+                QueryFeature qf;
+                msgpack::object  obj = oh.get();
+                unsigned int moa_size = obj.via.array.size;
+                if(!(obj.type == msgpack::type::ARRAY && moa_size>0)){        
+                    error_code = -6;
+                    LOG4CXX_ERROR(logger,error_map[error_code]);
+                    names.push_back(error_map[error_code]);
+                    confidences.push_back(0.0);
+                    error_return = std::make_tuple(error_code,names,confidences);
+                    break;
+                }
+                msgpack::object *itr = msgpack::begin(obj.via.array);
+                search_cmd = itr->via.i64;
+                if (!(search_cmd == TOP1_CMD || search_cmd == TOPN_CMD)){
+                    error_code = -5;
+                    LOG4CXX_ERROR(logger,error_map[error_code]);
+                    names.push_back(error_map[error_code]);
+                    confidences.push_back(0.0);
+                    error_return = std::make_tuple(error_code,names,confidences);
+                    break;
+                }
+                if (search_cmd == TOPN_CMD){
                     itr++;
                     find_k = itr->via.i64;
                 }
@@ -379,119 +461,61 @@ void lsh_server::worker(int name, string url_worker,void *ctx)
                 itr->convert(h_angle);
                 itr++;
                 itr->convert(v_angle);
-                do{
-                    bool is_double = false;
-                    if (qf.type.find('f8')!=string::npos){
-                        is_double = true;
-                    }
-                    else if (qf.type.find('f4')!=string::npos){
-                        is_double = false;
-                    }
-                    else{
-                        error_code = -7;
-                        LOG4CXX_ERROR(logger,error_map[error_code]);
-                        names.push_back(error_map[error_code]);
-                        confidences.push_back(0.0);
-                        break;
-                    }
-                    if (qf.shape.size() != 2){
-                        error_code = -3;
-                        LOG4CXX_ERROR(logger,error_map[error_code]);
-                        names.push_back(error_map[error_code]);
-                        confidences.push_back(0.0);
-                        break;
-                    }
-                    // if (is_double){
-                    //     construct_point_vec<double>(qf.data.ptr,qf.shape[0],qf.shape[1],&queries);
-                    // }
-                    // else{
-                    //     construct_point_vec<float>(qf.data.ptr,qf.shape[0],qf.shape[1],&queries);
-                    // }
-                    construct_point_vec(qf.data.ptr,qf.shape[0],qf.shape[1],&queries);
-                    if (queries.size() != h_angle.size() || queries.size() != v_angle.size()){
-                        error_code = -2;
-                        LOG4CXX_ERROR(logger,error_map[error_code]);
-                        names.push_back(error_map[error_code]);
-                        confidences.push_back(0.0);
-                        break;
-                    }
-                    try{
-                        for(const auto &query : queries){
-                            if (search_cmd == 0x8001){
-                                t1 = high_resolution_clock::now();
-                                int result = qo->find_nearest_neighbor(query);
-                                t2 = high_resolution_clock::now();
-                                elapsed_time = duration_cast<duration<double>>(t2 - t1).count();
-                                LOG4CXX_DEBUG(logger,"query time: " << elapsed_time);
-                                if (result != -1){
-                                    names.push_back(label[result]) ;
-                                    confidences.push_back(get_simi(query,dataset[result]));
-                                }
-                                else {
-                                    error_code = -1000;
-                                    LOG4CXX_ERROR(logger,error_map[error_code]);
-                                    names.push_back(error_map[error_code]);
-                                    confidences.push_back(0.0);
-                                }
-                            }
-                            else if (search_cmd == 0x8002){
-                                t1 = high_resolution_clock::now();
-                                std::vector<int32_t> result;
-                                qo->find_k_nearest_neighbors(query,find_k,&result);
-                                t2 = high_resolution_clock::now();
-                                elapsed_time = duration_cast<duration<double>>(t2 - t1).count();
-                                LOG4CXX_DEBUG(logger,"query time: " << elapsed_time);
-                                if (result.size() == find_k){
-                                    for(std::vector<int32_t>::iterator itr=result.begin();itr!=result.end();itr++){
-                                        names.push_back(label[*itr]) ;
-                                        confidences.push_back(get_simi(query,dataset[*itr]));
-                                    }
-                                }
-                                else {
-                                    error_code = -1000;
-                                    LOG4CXX_ERROR(logger,error_map[error_code]);
-                                    names.push_back(error_map[error_code]);
-                                    confidences.push_back(0.0);
-                                }
-                            }else{
-                                //undo
-                            }
-                        }
-                    }catch(exception &e){
-                        if (string(e.what()).find("dimension mismatch") != std::string::npos){
-                            error_code = -1;
-                            LOG4CXX_ERROR(logger,string("Fatal Error:")+string(e.what()));
-                            names.push_back(string("Fatal Error:")+string(e.what()));
-                            confidences.push_back(0.0);
-                        }
-                        else{
-                            error_code = -1000;
-                            LOG4CXX_ERROR(logger,string("Fatal Error:")+string(e.what()));
-                            names.push_back(string("Fatal Error:")+string(e.what()));
-                            confidences.push_back(0.0);
-                        }
-                    }
-                }while(0);
+
+                bool is_double = false;
+                if (qf.type.find('f8')!=string::npos){
+                    is_double = true;
+                }
+                else if (qf.type.find('f4')!=string::npos){
+                    is_double = false;
+                }
+                else{
+                    error_code = -7;
+                    LOG4CXX_ERROR(logger,error_map[error_code]);
+                    names.push_back(error_map[error_code]);
+                    confidences.push_back(0.0);
+                    error_return = std::make_tuple(error_code,names,confidences);
+                    break;
+                }
+                if (qf.shape.size() != 2){
+                    error_code = -3;
+                    LOG4CXX_ERROR(logger,error_map[error_code]);
+                    names.push_back(error_map[error_code]);
+                    confidences.push_back(0.0);
+                    error_return = std::make_tuple(error_code,names,confidences);
+                    break;
+                }
+                if (is_double){
+                    error_return = find_neighbor<double>(qf.data.ptr,qf.shape[0],qf.shape[1],h_angle,v_angle,*get_dataset<double>(),label,find_k,get_qo<double>(),search_cmd,error_map);
+                }
+                else{
+                    error_return = find_neighbor<float>(qf.data.ptr,qf.shape[0],qf.shape[1],h_angle,v_angle,*get_dataset<float>(),label,find_k,get_qo<float>(),search_cmd,error_map);
+
+                }
             }
-            else{
-                error_code = -5;
-                LOG4CXX_ERROR(logger,error_map[error_code]);
-                names.push_back(error_map[error_code]);
-                confidences.push_back(0.0);
+            catch(exception &e){
+                if (string(e.what()).find("dimension mismatch") != std::string::npos){
+                    error_code = -1;
+                    LOG4CXX_ERROR(logger,string("Fatal Error:")+string(e.what()));
+                    names.push_back(string("Fatal Error:")+string(e.what()));
+                    confidences.push_back(0.0);
+                    error_return = std::make_tuple(error_code,names,confidences);
+                }
+                else{
+                    error_code = -1000;
+                    LOG4CXX_ERROR(logger,string("Fatal Error:")+string(e.what()));
+                    names.push_back(string("Fatal Error:")+string(e.what()));
+                    confidences.push_back(0.0);
+                    error_return = std::make_tuple(error_code,names,confidences);
+                }
             }
-        }
-        else {
-            error_code = -6;
-            LOG4CXX_ERROR(logger,error_map[error_code]);
-            names.push_back(error_map[error_code]);
-            confidences.push_back(0.0);
-        }
-        
+        }while(0);
+
         msgpack::sbuffer sb;
-        t1 = high_resolution_clock::now();
-        msgpack::pack(sb,std::make_tuple(error_code,names,confidences));
-        t2 = high_resolution_clock::now();
-        elapsed_time = duration_cast<duration<double>>(t2 - t1).count();
+        auto t1 = high_resolution_clock::now();
+        msgpack::pack(sb,error_return);
+        auto t2 = high_resolution_clock::now();
+        double elapsed_time = duration_cast<duration<double>>(t2 - t1).count();
         LOG4CXX_DEBUG(logger,"msg pack time: " << elapsed_time);
         /* Create a new message */
         ///zmq_msg_t msg;
@@ -506,7 +530,7 @@ void lsh_server::worker(int name, string url_worker,void *ctx)
     }
     zmq_close(worker);
 }
-
+#endif
 // struct user {
 //     std::string name;
 //     int age;
@@ -527,7 +551,7 @@ int main(int argc, char *argv[])
 {
 #if 1
     LoggerPtr rootLogger = Logger::getRootLogger();
-    PatternLayoutPtr layout = new PatternLayout(LOG4CXX_STR("%d %level %c -%m%n"));
+    PatternLayoutPtr layout = new PatternLayout(LOG4CXX_STR("%d %level %l -%m%n"));
     RollingFileAppenderPtr rfa = new RollingFileAppender();
     rfa->setName(LOG4CXX_STR("lsh_server"));
     rfa->setAppend(true);
@@ -551,10 +575,11 @@ int main(int argc, char *argv[])
     log4cxx::Logger::getRootLogger()->setLevel(log4cxx::Level::getDebug());
 
     char ch;
+    bool b_simple = false;
     int temp,thread_num=10;
     string feature_file,label_file;
     string port("5556");
-    while ((ch = getopt(argc,argv,"hf:l:p:t:"))!=-1)
+    while ((ch = getopt(argc,argv,"shf:l:p:t:"))!=-1)
     {
         switch(ch)
         {
@@ -572,6 +597,8 @@ int main(int argc, char *argv[])
             if (temp != 0)
                 thread_num = temp;
             break;
+        case 's':
+            b_simple = true;
         case ':':
             printf("argment error!\n");
             break;
@@ -584,8 +611,7 @@ int main(int argc, char *argv[])
         }
     }
 
-
-	lsh_server ls(feature_file,label_file,port,thread_num);
+	lsh_server ls(feature_file,label_file,port,thread_num,b_simple);
     ls.loop();
 
     
@@ -771,9 +797,34 @@ int main(int argc, char *argv[])
                 itr->convert(qf);
                 cout << qf.type << endl;
                 cout << qf.shape[0] << ","<< qf.shape[1] << endl;
-                vector<Point> queries;
-                construct_point_vec(qf.data.ptr,qf.shape[0],qf.shape[1],&queries);
-                cout << queries[0] << endl;
+                //vector<Point> queries;
+                vector<DoublePoint> double_queries;
+                vector<FloatPoint> float_queries;
+                void *queries;
+                
+                //cout << queries[0] << endl;
+                bool is_double = false;
+                    if (qf.type.find('f8')!=string::npos){
+                        is_double = true;
+                    }
+                    else if (qf.type.find('f4')!=string::npos){
+                        is_double = false;
+                    }
+                if (is_double){                                   
+                    construct_point_vec<double>(qf.data.ptr,qf.shape[0],qf.shape[1],&double_queries);
+                    queries = &double_queries;
+                }
+                else{
+                    construct_point_vec<float>(qf.data.ptr,qf.shape[0],qf.shape[1],&float_queries);
+                    queries = &float_queries;
+                }
+                do{
+                    if (is_double){
+
+                    }else{
+
+                    }
+                }while(1);
             }
         }
         // msgpack::object *feature = msgpack::begin(obj2.via.array)+1;
